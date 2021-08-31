@@ -4,7 +4,8 @@ package io.github.tanghuibo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author tanghuibo
@@ -50,12 +51,29 @@ public class ZipStreamOutputStream {
     public void closeEntry(ZipStreamEntry e) throws IOException {
         long allSize = e.getSize();
         long readLength = 0;
+        byte[] bytes = new byte[65531];
         while (readLength < allSize) {
-            int newReadLength = (int)Math.min(allSize - readLength, 65531);
-            byte[] newBytes = e.readData(newReadLength);
-            writeBytes(getSignByte(newReadLength), 0, 5);
-            writeBytes(newBytes, 0, newBytes.length);
+            int newReadLength = e.readData(bytes);
+            if(newReadLength == 0) {
+                throw new RuntimeException("数据大小错误");
+            }
+            long oldReadLength = readLength;
             readLength = readLength + newReadLength;
+            long oldReadCount = oldReadLength == 0 ? -1 : (oldReadLength -1) / 65531;
+            long newReadCount = (readLength -1) / 65531;
+            if(newReadCount > oldReadCount) {
+                int stopPoint = (int) (65531 * newReadCount - oldReadLength);
+                if(stopPoint != 0) {
+                    writeBytes(bytes, 0, stopPoint);
+                }
+                long signLength = Math.min(65531L, allSize - newReadCount * 65531L);
+                writeBytes(getSignByte(signLength), 0, 5);
+                if(stopPoint != newReadLength) {
+                    writeBytes(bytes, stopPoint, newReadLength - stopPoint);
+                }
+            } else {
+                writeBytes(bytes, 0, newReadLength);
+            }
         }
         if(allSize % 65531 == 0) {
             writeBytes(getSignByte(0), 0, 5);

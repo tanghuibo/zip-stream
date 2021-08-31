@@ -2,7 +2,6 @@ package io.github.tanghuibo;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.zip.CRC32;
 
@@ -44,23 +43,11 @@ public class ZipStreamEntry {
      */
     private final InputStream inputStream;
 
-    /**
-     * 读偏移
-     */
-    private Integer readOffset;
-
-    /**
-     * 缓存的字节
-     */
-    private final byte[] byteBuffer;
-
     public ZipStreamEntry(InputStream inputStream, String name, Long size) {
         this.name = name;
         this.size = size;
         this.inputStream = inputStream;
         this.crc32 = new CRC32();
-        this.readOffset = 0;
-        this.byteBuffer = new byte[65531];
         xdostime = javaToExtendedDosTime(System.currentTimeMillis());
     }
 
@@ -117,10 +104,9 @@ public class ZipStreamEntry {
         return size;
     }
 
-    public byte[] readData(int readLength) throws IOException {
-        inputStream.read(byteBuffer, 0, readLength);
-        readOffset = readOffset + readLength;
-        crc32.update(byteBuffer, 0, readLength);
-        return Arrays.copyOfRange(byteBuffer, 0, readLength);
+    public int readData(byte[] bytes) throws IOException {
+        int readLength = inputStream.read(bytes);
+        crc32.update(bytes, 0, readLength);
+        return readLength;
     }
 }
